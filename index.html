@@ -3,7 +3,7 @@
 </head><body>
 <h1>さばレジ - 商品登録</h1>
 <input id=url placeholder="ショップURL"><br>
-<main id=main></main>
+<main id=main></main><br>
 <button id=btnadd>商品追加</button><br>
 <br>
 ※商品登録後、ブックマークすることでデータを保存できます
@@ -109,9 +109,10 @@ body {
 }
 main {
   margin: 1em 0;
+  display: inline-block;
 }
 main > div {
-  display: inline-grid;
+  display: grid;
   grid-template-columns: 1fr 1fr auto auto;
   place-items: center;
 }
