@@ -1,0 +1,127 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link rel="icon" href="data:">
+<title>さばレジ - 商品登録</title>
+</head><body>
+<h1>さばレジ - 商品登録</h1>
+<input id=url placeholder="ショップURL"><br>
+<main id=main></main>
+<button id=btnadd>商品追加</button><br>
+<br>
+※商品登録後、ブックマークすることでデータを保存できます
+
+<hr>
+<h2>さばレジ</h2>
+<qr-code value="./reg.html"></qr-code>
+<a href=./reg.html>さばレジ</a>
+
+
+<script type="module">
+import { QRCode } from "https://js.sabae.cc/QRCode.js";
+
+const magic = "#SR";
+
+const save = () => {
+  const data = [];
+  data.push(magic);
+  data.push(url.value);
+  const c = main.children;
+  data.push(c.length);
+  for (let i = 0; i < c.length; i++) {
+    const name = c[i].children[0];
+    const price = c[i].children[1];
+    data.push(name.value);
+    data.push(price.value);
+  }
+  location.hash = data.join(",");
+};
+
+const cr = (tag) => document.createElement(tag);
+const crin = (title, parent) => {
+  const inp = cr("input");
+  inp.placeholder = title;
+  parent.appendChild(inp);
+  return inp;
+};
+
+const addItem = () => {
+  const div = cr("div");
+  const name = crin("商品名", div);
+  const price = crin("値段", div);
+  price.type = "number";
+  const qr = new QRCode(magic, 2);
+  div.appendChild(qr);
+
+  const delbtn = cr("button");
+  delbtn.textContent = "✕";
+  div.appendChild(delbtn);
+  delbtn.onclick = () => {
+    div.parentNode.removeChild(div);
+    save();
+  };
+  
+  name.oninput = price.oninput = () => {
+    qr.value = url.value + magic + "," + name.value + "," + price.value;
+    save();
+  };
+  main.appendChild(div);
+  return div;
+};
+url.oninput = () => {
+  const c = main.children;
+  for (let i = 0; i < c.length; i++) {
+    const name = c[i].children[0];
+    name.oninput()
+  }
+};
+
+btnadd.onclick = () => addItem();
+
+const load = () => {
+  const n = location.hash.indexOf(magic + ",");
+  if (n < 0) {
+    return false;
+  }
+  const data = location.hash.substring(n + magic.length + 1).split(",");
+  url.value = data[0];
+  const nitems = data[1];
+  for (let i = 0; i < nitems; i++) {
+    const n = addItem();
+    n.children[0].value = decodeURIComponent(data[2 + i * 2]);
+    n.children[1].value = data[2 + i * 2 + 1];
+    n.children[0].oninput();
+  }
+  return true;
+};
+
+if (!load()) {
+  const ndef = 3;
+  for (let i = 0; i < ndef; i++) {
+    addItem();
+  }
+}
+</script>
+
+<hr>
+<a href=https://github.com/code4fukui/sabareg>src on GitHub</a><br>
+
+<style>
+body {
+  font-family: sans-serif;
+}
+main {
+  margin: 1em 0;
+}
+main > div {
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr auto auto;
+  place-items: center;
+}
+input {
+  padding: .3em;
+  margin: .2em;
+  font-size: 16px;
+}
+a {
+  color: gray !important;
+}
+</style>
+</body><html>
