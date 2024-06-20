@@ -88,7 +88,10 @@ btn.onclick = async () => {
 
   const url = makeQRURL(data);
   qr.innerHTML = "";
-  qr.appendChild(new QRCode(url));
+  const a = document.createElement("a");
+  a.href = url;
+  a.appendChild(new QRCode(url));
+  qr.appendChild(a);
 
   await showItems();
 };
