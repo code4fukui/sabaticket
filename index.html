@@ -1,104 +1,103 @@
 <!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link rel="icon" href="data:">
-<title>さばレジ - 商品登録</title>
+<title>さばチケ</title>
 </head><body>
-<h1>さばレジ - 商品登録</h1>
-<input id=url placeholder="ショップURL"><br>
-<main id=main></main><br>
-<button id=btnadd>商品追加</button><br>
-<br>
-※商品登録後、ブックマークすることでデータを保存できます
+<h1>さばチケ</h1>
 
-<hr>
-<h2>さばレジ</h2>
-<qr-code value="https://regi.sabae.cc/reg.html"></qr-code>
-<a href=./reg.html>さばレジ</a>
-
+<table>
+<tr><th>タイトル</th><td><span id=divtitle></span></td></tr>
+<tr><th>ポイント</th><td><span id=divpoint></span>Pt</td></tr>
+<tr><th>発行日時</th><td><span id=divissue></span></td></tr>
+<tr><th>有効期限</th><td><span id=divlimit></span></td></tr>
+</table>
+<div id=divqr></div>
+<button id=btnuse style="display:none">使う</button>
 
 <script type="module">
 import { QRCode } from "https://js.sabae.cc/QRCode.js";
+import { TAI64N } from "https://code4fukui.github.io/TAI64N-es/TAI64N.js";
+import { DateTime } from "https://js.sabae.cc/DateTime.js";
+import { CBOR } from "https://js.sabae.cc/CBOR.js";
+import { Base64URL } from "https://code4fukui.github.io/Base64URL/Base64URL.js";
 
-const magic = "#SR";
+import { indexStorage, keyprikey, db } from "./db.js";
+import * as sec from "https://code4fukui.github.io/sec.js/sec.js";
 
-const save = () => {
-  const data = [];
-  data.push(magic);
-  data.push(url.value);
-  const c = main.children;
-  data.push(c.length);
-  for (let i = 0; i < c.length; i++) {
-    const name = c[i].children[0];
-    const price = c[i].children[1];
-    data.push(name.value);
-    data.push(price.value);
-  }
-  location.hash = data.join(",");
+const tai64n2string = (tai64n) => {
+  const d = TAI64N.toDate(tai64n);
+  return new DateTime(d).toString();
 };
 
-const cr = (tag) => document.createElement(tag);
-const crin = (title, parent) => {
-  const inp = cr("input");
-  inp.placeholder = title;
-  parent.appendChild(inp);
-  return inp;
-};
+const url = new URL(location.href);
+const q = url.searchParams.get("q");
+const [cbor, sig] = CBOR.decode(Base64URL.decode(q));
+const data = CBOR.decode(cbor);
 
-const addItem = () => {
-  const div = cr("div");
-  const name = crin("商品名", div);
-  const price = crin("値段", div);
-  price.type = "number";
-  const qr = new QRCode(magic, 2);
-  div.appendChild(qr);
+//const data = { id, title, point, issue, valid };
+divtitle.textContent = data.title;
+divpoint.textContent = data.point;
+divissue.textContent = tai64n2string(data.issue);
+divlimit.textContent = tai64n2string(data.valid);
+divqr.appendChild(new QRCode(location.href));
 
-  const delbtn = cr("button");
-  delbtn.textContent = "✕";
-  div.appendChild(delbtn);
-  delbtn.onclick = () => {
-    div.parentNode.removeChild(div);
-    save();
-  };
-  
-  name.oninput = price.oninput = () => {
-    qr.value = url.value + magic + "," + name.value + "," + price.value;
-    save();
-  };
-  main.appendChild(div);
-  return div;
-};
-url.oninput = () => {
-  const c = main.children;
-  for (let i = 0; i < c.length; i++) {
-    const name = c[i].children[0];
-    name.oninput()
-  }
-};
-
-btnadd.onclick = () => addItem();
-
-const load = () => {
-  const n = location.hash.indexOf(magic + ",");
-  if (n < 0) {
-    return false;
-  }
-  const data = location.hash.substring(n + magic.length + 1).split(",");
-  url.value = data[0];
-  const nitems = data[1];
-  for (let i = 0; i < nitems; i++) {
-    const n = addItem();
-    n.children[0].value = decodeURIComponent(data[2 + i * 2]);
-    n.children[1].value = data[2 + i * 2 + 1];
-    n.children[0].oninput();
-  }
-  return true;
-};
-
-if (!load()) {
-  const ndef = 3;
-  for (let i = 0; i < ndef; i++) {
-    addItem();
+const sprikey = await indexStorage.getItem(keyprikey);
+if (sprikey) {
+  btnuse.style.display = "inline";
+  try {
+    const prikey = Base64URL.decode(sprikey);
+    const pubkey = sec.pubkey(prikey);
+    const verify = sec.verify(sig, pubkey, cbor);
+    if (verify) {
+      const valid = new DateTime(divlimit.textContent).getTime() >= new DateTime().getTime();
+      if (valid) {
+        const dbd = await db.getAt(data.id);
+        if (dbd) {
+          console.log(dbd);
+          if (dbd.use) {
+            btnuse.disabled = true;
+            btnuse.textContent = "使用済み";
+            btnuse.onclick = null;
+          } else {
+            btnuse.textContent = "使う";
+            btnuse.disabled = false;
+            btnuse.onclick = async () => {
+              btnuse.disabled = true;
+              dbd.use = TAI64N.now();
+              await db.setAt(dbd.id, dbd);
+              btnuse.textContent = "使用済み";
+              btnuse.onclick = null;
+            };
+          }
+        } else {
+          // 発行履歴なし
+          btnuse.textContent = "使う（履歴なし）";
+          btnuse.disabled = false;
+          btnuse.onclick = async () => {
+            btnuse.disabled = true;
+            data.use = TAI64N.now();
+            await db.add(data);
+            btnuse.textContent = "使用済み";
+            btnuse.onclick = null;
+          };
+        }
+      } else {
+        btnuse.disabled = true;
+        btnuse.textContent = "期限切れ";
+        btnuse.onclick = null;
+      }
+    } else {
+      btnuse.disabled = true;
+      btnuse.textContent = "不正";
+      btnuse.onclick = null;
+    }
+  } catch (e) {
+    console.log(e);
+    btnuse.style.display = "none";
   }
 }
+
+
 </script>
+
 
 <hr>
 <a href=https://github.com/code4fukui/sabaregi>src on GitHub</a><br>
@@ -106,23 +105,41 @@ if (!load()) {
 <style>
 body {
   font-family: sans-serif;
+  text-align: center;
 }
-main {
-  margin: 1em 0;
+table {
   display: inline-block;
+  border-collapse: collapse;
 }
-main > div {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto auto;
-  place-items: center;
+#main {
+  margin: 1em 0;
+  border-collapse: collapse;
+}
+td, th {
+  border: 1px solid black;
+  padding: .2em .8em;
+  font-size: 16px;
 }
 input {
-  padding: .3em;
-  margin: .2em;
+  padding: .2em;
+  margin: .1em;
   font-size: 16px;
+}
+button {
+  font-size: 16px;
+  padding: .2em;
+}
+input {
+  font-size: 150%;
 }
 a {
   color: gray !important;
+}
+.min {
+  font-size: 13px;
+}
+#btnclear {
+  margin: .5em;
 }
 </style>
 </body><html>

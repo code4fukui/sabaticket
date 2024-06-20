@@ -1,0 +1,144 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link rel="icon" href="data:">
+<title>さばチケ 管理画面</title>
+</head><body>
+<h1>さばチケ 管理画面</h1>
+
+<h2>発行</h2>
+タイトル: <input id=intitle value="さばチケ"><br>
+ポイント: <input id=inpoint value=100>Pt<br>
+有効期限: <input id=invalid type=date><br>
+<button id=btn>発行</button><br>
+<a href=https://code4fukui.github.io/qrlink-reader/>QRコード読み取り</a><br>
+<div id=qr></div>
+
+<hr>
+<h2>発行済み</h2><br>
+<div id=divlist></div>
+
+<hr>
+<h2>管理</h2>
+<button id=btnprikey>秘密鍵バックアップ</button><br>
+<button id=btnprikey_recover>秘密鍵復元</button><br>
+<button id=btnprikey_clear>秘密鍵再生成</button><br>
+<button id=btndata_clear>発行履歴クリア</button><br>
+
+<script type="module">
+import * as sec from "https://code4fukui.github.io/sec.js/sec.js";
+import { QRCode } from "https://js.sabae.cc/QRCode.js";
+import { Base64URL } from "https://code4fukui.github.io/Base64URL/Base64URL.js";
+import { TAI64N } from "https://code4fukui.github.io/TAI64N-es/TAI64N.js";
+import { Day, DateTime } from "https://js.sabae.cc/DateTime.js";
+import { CBOR } from "https://js.sabae.cc/CBOR.js";
+import { json2table } from "./json2table.js";
+import { indexStorage, keyprikey, db } from "./db.js";
+
+let prikey = Base64URL.decode(await indexStorage.getItem(keyprikey) || Base64URL.encode(sec.prikey()));
+await indexStorage.setItem(keyprikey, Base64URL.encode(prikey));
+console.log(prikey);
+let pubkey = sec.pubkey(prikey);
+
+invalid.value = new Day().dayAfter(30);
+
+const showItems = async () => {
+  const items = await db.getAll();
+  console.log(items);
+  divlist.innerHTML = "";
+  divlist.appendChild(json2table(items, (td, name, value, item) => {
+    if (name == "id") {
+      const a = document.createElement("a");
+      td.appendChild(a);
+      a.href = makeQRURL(item);
+      a.textContent = value;
+      return true;
+    } else if (value instanceof Uint8Array && value.length == 12) { // TAI64N
+      const d = TAI64N.toDate(value);
+      td.textContent = new DateTime(d).toString();
+      return true;
+    }
+    return false;
+  }));
+};
+showItems();
+
+const makeURL = (qrdata) => {
+  const url0 = location.href;
+  const url = url0.substring(0, url0.lastIndexOf("/") + 1);
+  console.log(url0, url);
+  return url + "?q=" + Base64URL.encode(qrdata);
+};
+
+const makeQRURL = (data) => {
+  const cbor = CBOR.encode(data);
+  const sig = sec.sign(prikey, cbor);
+  const qrdata = CBOR.encode([cbor, sig]);
+  const url = makeURL(qrdata);
+  return url;
+};
+
+btn.onclick = async () => {
+  const issue = TAI64N.now();
+  const d = new Day(invalid.value).dayAfter(1);
+  const dt = new DateTime(d);
+  const valid = TAI64N.encode(new Date(dt.getTime()));
+  const point = parseInt(inpoint.value);
+  const title = intitle.value;
+  const data = { title, point, issue, valid };
+
+  data.id = await db.add(data);
+
+  const url = makeQRURL(data);
+  qr.innerHTML = "";
+  qr.appendChild(new QRCode(url));
+
+  await showItems();
+};
+
+btnprikey.onclick = () => {
+  prompt("秘密鍵", Base64URL.encode(prikey));
+};
+btnprikey_recover.onclick = async () => {
+  const s = prompt("秘密鍵");
+  if (s) {
+    await indexStorage.setItem(keyprikey, s);
+    prikey = Base64URL.decode(s);
+    pubkey = sec.pubkey(prikey);
+  }
+};
+btnprikey_clear.onclick = async () => {
+  if (confirm("秘密鍵を再生成します")) {
+    prikey = sec.prikey();
+    await indexStorage.setItem(keyprikey, Base64URL.encode(prikey));
+    pubkey = sec.pubkey(prikey);
+  }
+};
+
+btndata_clear.onclick = async () => {
+  await db.removeAll();
+  await showItems();
+};
+</script>
+
+<hr>
+<a href=https://github.com/code4fukui/sabaticket>src on GitHub</a><br>
+
+<style>
+body {
+  font-family: sans-serif;
+}
+input {
+  padding: .3em;
+  margin: .2em;
+  font-size: 16px;
+}
+a {
+  color: gray !important;
+}
+table {
+  border-collapse: collapse;
+}
+td, th {
+  border: 1px solid black;
+  padding: .1em .4em;
+}
+</style>
+</body><html>
