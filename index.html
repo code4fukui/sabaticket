@@ -84,10 +84,12 @@ if (sprikey) {
         btnuse.textContent = "期限切れ";
         btnuse.onclick = null;
       }
-    } else {
+    } else { // 自分チケットではない
+      /*
       btnuse.disabled = true;
       btnuse.textContent = "不正";
       btnuse.onclick = null;
+      */
     }
   } catch (e) {
     console.log(e);
