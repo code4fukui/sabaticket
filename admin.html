@@ -4,10 +4,14 @@
 <h1>さばチケ 管理画面</h1>
 
 <h2>発行</h2>
-タイトル: <input id=intitle value="さばチケ"><br>
-ポイント: <input id=inpoint value=100>Pt<br>
-有効期限: <input id=invalid type=date><br>
-<button id=btn>発行</button><br>
+<div class=divlist>
+<span>発行者</span><input id=inpresenter value="">
+<span>タイトル</span><input id=intitle value="">
+<span>ポイント</span><div><input id=inpoint>Pt (空欄でポイント発行無し)</div>
+<span>説明</span><textarea id=tadescription></textarea>
+<span>有効期限</span><input id=invalid type=date>
+<span></span><button id=btn>発行</button><br>
+</div><br>
 <a href=https://code4fukui.github.io/qrlink-reader/>QRコード読み取り</a><br>
 <div id=qr></div>
 
@@ -34,9 +38,12 @@ import { indexStorage, keyprikey, db } from "./db.js";
 
 let prikey = Base64URL.decode(await indexStorage.getItem(keyprikey) || Base64URL.encode(sec.prikey()));
 await indexStorage.setItem(keyprikey, Base64URL.encode(prikey));
-console.log(prikey);
 let pubkey = sec.pubkey(prikey);
 
+inpresenter.value = await indexStorage.getItem("sabaticket_presenter") || "";
+intitle.value = await indexStorage.getItem("sabaticket_title") || "さばチケ";
+inpoint.value = await indexStorage.getItem("sabaticket_point") || "";
+tadescription.value = await indexStorage.getItem("sabaticket_description") || "";
 invalid.value = new Day().dayAfter(30);
 
 const showItems = async () => {
@@ -80,9 +87,11 @@ btn.onclick = async () => {
   const d = new Day(invalid.value).dayAfter(1);
   const dt = new DateTime(d);
   const valid = TAI64N.encode(new Date(dt.getTime()));
-  const point = parseInt(inpoint.value);
+  const point = inpoint.value ? parseInt(inpoint.value) : "";
   const title = intitle.value;
-  const data = { title, point, issue, valid };
+  const presenter = inpresenter.value;
+  const description = tadescription.value;
+  const data = { presenter, title, point, issue, valid, description };
 
   data.id = await db.add(data);
 
@@ -94,6 +103,11 @@ btn.onclick = async () => {
   qr.appendChild(a);
 
   await showItems();
+
+  await indexStorage.setItem("sabaticket_presenter", presenter);
+  await indexStorage.setItem("sabaticket_title", title);
+  await indexStorage.setItem("sabaticket_point", point);
+  await indexStorage.setItem("sabaticket_description", description);
 };
 
 btnprikey.onclick = () => {
@@ -128,10 +142,27 @@ btndata_clear.onclick = async () => {
 body {
   font-family: sans-serif;
 }
-input {
+input, textarea {
+  box-sizing: border-box;
+}
+input, textarea, button {
   padding: .3em;
   margin: .2em;
   font-size: 16px;
+}
+.divlist {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  margin: 1em;
+}
+.divlist textarea {
+  height: 5em;
+  padding: .5em;
+}
+.divlist > span {
+  padding-right: .5em;
+  font-weight: bold;
+  line-height: 2em;
 }
 a {
   color: gray !important;
