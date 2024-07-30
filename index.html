@@ -8,6 +8,7 @@
 <tr><th>タイトル</th><td><span id=divtitle></span></td></tr>
 <tr id=trpoint><th>ポイント</th><td><span id=divpoint></span>Pt</td></tr>
 <tr><th>説明</th><td><span id=divdescription></span></td></tr>
+<tr><th>URL</th><td><a id=aurl target=_blank></a></td></tr>
 <tr><th>発行日時</th><td><span id=divissue></span></td></tr>
 <tr><th>有効期限</th><td><span id=divlimit></span></td></tr>
 </table>
@@ -42,6 +43,8 @@ if (!data.point) {
   trpoint.style.display = "none";
 }
 divdescription.textContent = data.description;
+aurl.setAttribute("href", data.url);
+aurl.textContent= data.url;
 divissue.textContent = tai64n2string(data.issue);
 divlimit.textContent = tai64n2string(data.valid);
 divqr.appendChild(new QRCode(location.href));
