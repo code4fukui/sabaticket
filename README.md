@@ -1,26 +1,34 @@
 # sabaticket
-日本語のREADMEはこちらです: [README.ja.md](README.ja.md)
 
-sabaticket is a simple ticket management system built with JavaScript. It allows users to issue and use digital tickets with QR codes.
+さばチケ
 
-## Demo
-You can view the [sabaticket admin panel](https://code4fukui.github.io/sabaticket/admin.html) to create and manage tickets.
+**Live demo**: https://code4fukui.github.io/sabaticket/admin.html/
 
 ## Features
-- Issue tickets with customizable details like title, description, and expiration date
-- Generate QR codes for tickets that can be scanned and used
-- Manage issued tickets and their usage history
-- Backup and restore the private key used to sign tickets
 
-## Requirements
-This project runs in the browser and requires no additional software to be installed.
+- QR code generation
 
-## Usage
-1. Open the [sabaticket admin panel](https://code4fukui.github.io/sabaticket/admin.html) in your web browser.
-2. Fill out the ticket details and click "Issue" to create a new ticket.
-3. The QR code for the new ticket will be displayed, which can be scanned and used.
-4. The "Issued" section will show all the tickets that have been created, and you can click on the ticket ID to view its QR code.
-5. Use the "Backup private key", "Restore private key", and "Regenerate private key" buttons to manage the private key used to sign tickets.
+## Technology Stack
+
+**Browser modules (ES imports):**
+
+- [`QRCode.js`](https://js.sabae.cc/QRCode.js)
+- [`TAI64N.js`](https://code4fukui.github.io/TAI64N-es/TAI64N.js)
+- [`DateTime.js`](https://js.sabae.cc/DateTime.js)
+- [`CBOR.js`](https://js.sabae.cc/CBOR.js)
+- [`Base64URL.js`](https://code4fukui.github.io/Base64URL/Base64URL.js)
+- [`sec.js`](https://code4fukui.github.io/sec.js/sec.js)
+
+
+## Installation & Setup
+
+No build step required. Clone the repository and open `index.html` in a browser,
+or visit the live demo at https://code4fukui.github.io/sabaticket/admin.html/
+
+## Contributing
+
+Contributions are welcome. Please open an issue or pull request on GitHub.
 
 ## License
-This project is licensed under the [MIT License](LICENSE).
+
+MIT License. See [LICENSE](./LICENSE) for details.
